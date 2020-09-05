@@ -19,17 +19,23 @@ def spindle_control(percent):
     """ Spindle control implementation 0..100.
     :param percent: Spindle speed in percent.
     """
-    logging.info("spindle control: {}%".format(percent))
+    if ENABLE_SPINDLE:
+        logging.info("spindle control: {}%".format(percent))
+    else:
+        logging.info("spindle control disabled")
 
 
 def fan_control(on_off):
     """Cooling fan control.
     :param on_off: boolean value if fan is enabled.
     """
-    if on_off:
-        logging.info("Fan is on")
+    if ENABLE_FAN:
+        if on_off:
+            logging.info("Fan is on")
+        else:
+            logging.info("Fan is off")
     else:
-        logging.info("Fan is off")
+        logging.info("fan control disabled")
 
 
 # noinspection PyUnusedLocal

@@ -21,8 +21,16 @@ STEP_PIN_MASK_E = 1 << STEPPER_STEP_PIN_E
 def init():
     """ Initialize GPIO pins and machine itself.
     """
-    gpio.init(STEPPER_STEP_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(STEPPER_STEP_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
+    if ENABLE_L293D and STEPPER_STEP_PINS_X:
+        for pin in STEPPER_STEP_PINS_X:
+            gpio.init(pin, rpgpio.GPIO.MODE_OUTPUT)
+    else:
+        gpio.init(STEPPER_STEP_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
+    if ENABLE_L293D and STEPPER_STEP_PINS_Y:
+        for pin in STEPPER_STEP_PINS_Y:
+            gpio.init(pin, rpgpio.GPIO.MODE_OUTPUT)
+    else:
+        gpio.init(STEPPER_STEP_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_DIR_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
@@ -32,16 +40,21 @@ def init():
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_Y, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_Z, rpgpio.GPIO.MODE_INPUT_PULLUP)
-    gpio.init(SPINDLE_PWM_PIN, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(FAN_PIN, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(EXTRUDER_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(BED_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(STEPPERS_ENABLE_PIN, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.clear(SPINDLE_PWM_PIN)
-    gpio.clear(FAN_PIN)
-    gpio.clear(EXTRUDER_HEATER_PIN)
-    gpio.clear(BED_HEATER_PIN)
-    gpio.clear(STEPPERS_ENABLE_PIN)
+    if ENABLE_SPINDLE:
+        gpio.init(SPINDLE_PWM_PIN, rpgpio.GPIO.MODE_OUTPUT)
+        gpio.clear(SPINDLE_PWM_PIN)
+    if ENABLE_FAN:
+        gpio.init(FAN_PIN, rpgpio.GPIO.MODE_OUTPUT)
+        gpio.clear(FAN_PIN)
+    if ENABLE_EXTRUDER_HEATER:
+        gpio.init(EXTRUDER_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
+        gpio.clear(EXTRUDER_HEATER_PIN)
+    if ENABLE_BED_HEATER:
+        gpio.init(BED_HEATER_PIN, rpgpio.GPIO.MODE_OUTPUT)
+        gpio.clear(BED_HEATER_PIN)
+    if ENABLE_STEPPER_ENABLE_PIN:
+        gpio.init(STEPPERS_ENABLE_PIN, rpgpio.GPIO.MODE_OUTPUT)
+        gpio.clear(STEPPERS_ENABLE_PIN)
     watchdog.start()
 
 
@@ -49,11 +62,12 @@ def spindle_control(percent):
     """ Spindle control implementation.
     :param percent: spindle speed in percent 0..100. If 0, stop the spindle.
     """
-    logging.info("spindle control: {}%".format(percent))
-    if percent > 0:
-        pwm.add_pin(SPINDLE_PWM_PIN, percent)
-    else:
-        pwm.remove_pin(SPINDLE_PWM_PIN)
+    if ENABLE_SPINDLE:
+        logging.info("spindle control: {}%".format(percent))
+        if percent > 0:
+            pwm.add_pin(SPINDLE_PWM_PIN, percent)
+        else:
+            pwm.remove_pin(SPINDLE_PWM_PIN)
 
 
 def fan_control(on_off):
@@ -61,53 +75,65 @@ def fan_control(on_off):
     Cooling fan control.
     :param on_off: boolean value if fan is enabled.
     """
-    if on_off:
-        logging.info("Fan is on")
-        gpio.set(FAN_PIN)
-    else:
-        logging.info("Fan is off")
-        gpio.clear(FAN_PIN)
+    if ENABLE_FAN:
+        if on_off:
+            logging.info("Fan is on")
+            gpio.set(FAN_PIN)
+        else:
+            logging.info("Fan is off")
+            gpio.clear(FAN_PIN)
 
 
 def extruder_heater_control(percent):
     """ Extruder heater control.
     :param percent: heater power in percent 0..100. 0 turns heater off.
     """
-    if percent > 0:
-        pwm.add_pin(EXTRUDER_HEATER_PIN, percent)
-    else:
-        pwm.remove_pin(EXTRUDER_HEATER_PIN)
+    if ENABLE_EXTRUDER_HEATER:
+        if percent > 0:
+            pwm.add_pin(EXTRUDER_HEATER_PIN, percent)
+        else:
+            pwm.remove_pin(EXTRUDER_HEATER_PIN)
 
 
 def bed_heater_control(percent):
     """ Hot bed heater control.
     :param percent: heater power in percent 0..100. 0 turns heater off.
     """
-    if percent > 0:
-        pwm.add_pin(BED_HEATER_PIN, percent)
-    else:
-        pwm.remove_pin(BED_HEATER_PIN)
+    if ENABLE_BED_HEATER:
+        if percent > 0:
+            pwm.add_pin(BED_HEATER_PIN, percent)
+        else:
+            pwm.remove_pin(BED_HEATER_PIN)
 
 
 def get_extruder_temperature():
     """ Measure extruder temperature.
     :return: temperature in Celsius.
     """
-    return thermistor.get_temperature(EXTRUDER_TEMPERATURE_SENSOR_CHANNEL)
+    if ENABLE_EXTRUDER_HEATER:
+        return thermistor.get_temperature(EXTRUDER_TEMPERATURE_SENSOR_CHANNEL)
+    else:
+        return 0
 
 
 def get_bed_temperature():
     """ Measure bed temperature.
     :return: temperature in Celsius.
     """
-    return thermistor.get_temperature(BED_TEMPERATURE_SENSOR_CHANNEL)
+    if ENABLE_BED_HEATER:
+        return thermistor.get_temperature(BED_TEMPERATURE_SENSOR_CHANNEL)
+    else:
+        return 0
 
 
 def disable_steppers():
     """ Disable all steppers until any movement occurs.
     """
-    logging.info("disable steppers")
-    gpio.set(STEPPERS_ENABLE_PIN)
+    if ENABLE_STEPPER_ENABLE_PIN:
+        logging.info("disable steppers")
+        gpio.set(STEPPERS_ENABLE_PIN)
+    else:
+        logging.info("command disabled ...")
 
 
 def __calibrate_private(x, y, z, invert):
@@ -202,7 +228,8 @@ def calibrate(x, y, z):
     :return: boolean, True if all specified end stops were triggered.
     """
     # enable steppers
-    gpio.clear(STEPPERS_ENABLE_PIN)
+    if ENABLE_STEPPER_ENABLE_PIN:
+        gpio.clear(STEPPERS_ENABLE_PIN)
     logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
     if not __calibrate_private(x, y, z, True):  # move from endstop switch
         return False
@@ -220,7 +247,8 @@ def move(generator):
     # calculation is done.
 
     # enable steppers
-    gpio.clear(STEPPERS_ENABLE_PIN)
+    if ENABLE_STEPPER_ENABLE_PIN:
+        gpio.clear(STEPPERS_ENABLE_PIN)
     # 4 control blocks per 32 bytes
     bytes_per_iter = 4 * dma.control_block_size()
     # prepare and run dma
@@ -326,10 +354,14 @@ def deinit():
     join()
     disable_steppers()
     pwm.remove_all()
-    gpio.clear(SPINDLE_PWM_PIN)
-    gpio.clear(FAN_PIN)
-    gpio.clear(EXTRUDER_HEATER_PIN)
-    gpio.clear(BED_HEATER_PIN)
+    if ENABLE_SPINDLE:
+        gpio.clear(SPINDLE_PWM_PIN)
+    if ENABLE_FAN:
+        gpio.clear(FAN_PIN)
+    if ENABLE_EXTRUDER_HEATER:
+        gpio.clear(EXTRUDER_HEATER_PIN)
+    if ENABLE_BED_HEATER:
+        gpio.clear(BED_HEATER_PIN)
     watchdog.stop()
 
 

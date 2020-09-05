@@ -107,19 +107,19 @@ except ImportError:
 # check if all methods that is needed is implemented
 if 'init' not in locals():
     raise NotImplementedError("hal.init() not implemented")
-if 'spindle_control' not in locals():
+if ENABLE_SPINDLE and 'spindle_control' not in locals():
     raise NotImplementedError("hal.spindle_control() not implemented")
-if 'fan_control' not in locals():
+if ENABLE_FAN and 'fan_control' not in locals():
     raise NotImplementedError("hal.fan_control() not implemented")
-if 'extruder_heater_control' not in locals():
+if ENABLE_EXTRUDER_HEATER and 'extruder_heater_control' not in locals():
     raise NotImplementedError("hal.extruder_heater_control() not implemented")
-if 'bed_heater_control' not in locals():
+if ENABLE_BED_HEATER and 'bed_heater_control' not in locals():
     raise NotImplementedError("hal.bed_heater_control() not implemented")
-if 'get_extruder_temperature' not in locals():
+if ENABLE_EXTRUDER_HEATER and 'get_extruder_temperature' not in locals():
     raise NotImplementedError("hal.get_extruder_temperature() not implemented")
-if 'get_bed_temperature' not in locals():
+if ENABLE_BED_HEATER and 'get_bed_temperature' not in locals():
     raise NotImplementedError("hal.get_bed_temperature() not implemented")
-if 'disable_steppers' not in locals():
+if ENABLE_STEPPER_ENABLE_PIN and 'disable_steppers' not in locals():
     raise NotImplementedError("hal.disable_steppers() not implemented")
 if 'calibrate' not in locals():
     raise NotImplementedError("hal.calibrate() not implemented")
