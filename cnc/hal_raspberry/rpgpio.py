@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from .rpgpio_private import *
+#from .rpgpio_private import *
+from rpgpio_private import *
 
 import time
 import logging
@@ -409,9 +410,7 @@ class DMAWatchdog(DMAProto):
         self._dma.write_int(self._DMA_CHANNEL_ADDRESS + DMA_NEXTCONBK,
                             self._phys_memory.get_bus_address())
 
-
-# for testing purpose
-def main():
+def test():
     pin = 21
     g = GPIO()
     g.init(pin, GPIO.MODE_INPUT_NOPULL)
@@ -461,6 +460,51 @@ def main():
         pass
     pwm.remove_pin(pin)
     print("pwm stopped")
+
+# for testing purpose
+def main():
+    pins = [4,17,27,22]
+    seqs = [[1,0,0,0], # Phase A
+            [1,0,1,0], # Phase AB
+            [0,0,1,0], # Phase B
+            [0,1,1,0], # Phase A'B
+            [0,1,0,0], # Phase A'
+            [0,1,0,1], # Phase A'B'
+            [0,0,0,1], # Phase B'
+            [1,0,0,1]] # Phase AB'
+    g = GPIO()
+    for pin in pins:
+        print("Start output PIN: {}".format(pin))
+        g.init(pin, GPIO.MODE_OUTPUT)
+
+    dg = DMAGPIO()
+#    mask = 0
+#    for pin in pins:
+#        mask += 1 << pin
+#    print("MASK : {}".format(bin(mask)))
+#
+#    dg.add_pulse(mask, 500000)
+#    dg.add_delay(500000)
+    for seq in seqs:
+        mask = 0
+        for idx, enable in enumerate(seq):
+            if enable:
+                mask += 1 << pins[idx]
+        dg.add_pulse(mask, 10000)
+    dg.add_delay(250000)
+
+    dg.run(True)
+    print("dmagpio is started")
+    try:
+        print("press enter to stop...")
+        sys.stdin.readline()
+    except KeyboardInterrupt:
+        pass
+    dg.stop()
+
+    for pin in pins:
+        print("Stop output PIN: {}".format(pin))
+        g.clear(pin)
 
 if __name__ == "__main__":
     main()
