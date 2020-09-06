@@ -3,7 +3,7 @@ import time
 from cnc.hal_raspberry import rpgpio
 from cnc.pulses import *
 from cnc.config import *
-from cnc.sensors import thermistor
+#from cnc.sensors import thermistor
 
 US_IN_SECONDS = 1000000
 
@@ -17,6 +17,86 @@ STEP_PIN_MASK_Y = 1 << STEPPER_STEP_PIN_Y
 STEP_PIN_MASK_Z = 1 << STEPPER_STEP_PIN_Z
 STEP_PIN_MASK_E = 1 << STEPPER_STEP_PIN_E
 
+HALF_STEP_SEQ = [[1,0,0,0], # Phase A
+                 [1,0,1,0], # Phase AB
+                 [0,0,1,0], # Phase B
+                 [0,1,1,0], # Phase A'B
+                 [0,1,0,0], # Phase A'
+                 [0,1,0,1], # Phase A'B'
+                 [0,0,0,1], # Phase B'
+                 [1,0,0,1]] # Phase AB'
+
+FULL_STEP_SEQ = [[1,0,0,0], # Phase A
+                 [0,0,1,0], # Phase B
+                 [0,1,0,0], # Phase A'
+                 [0,0,0,1]] # Phase B'
+
+STATE_DIR_DIRECT = 0
+STATE_DIR_INV = 1
+
+virtual_dir_x = {'seq': None, 'state': STATE_DIR_DIRECT}
+virtual_dir_y = {'seq': None, 'state': STATE_DIR_DIRECT}
+virtual_dir_z = {'seq': None, 'state': STATE_DIR_DIRECT}
+virtual_dir_e = {'seq': None, 'state': STATE_DIR_DIRECT}
+
+def __init_dir(pin, mode):
+    ''' init direction pin '''
+    if ENABLE_L293D and STEPPER_STEP_PINS_X:
+        if ENABLE_HALF_STEP:
+            virtual_dir_x['seq'] = HALF_STEP_SEQ
+        else:
+            virtual_dir_x['seq'] = FULL_STEP_SEQ
+    if ENABLE_L293D and STEPPER_DIR_PIN_Y:
+        if ENABLE_HALF_STEP:
+            virtual_dir_y['seq'] = HALF_STEP_SEQ
+        else:
+            virtual_dir_y['seq'] = FULL_STEP_SEQ
+    if ENABLE_L293D and STEPPER_DIR_PIN_Z:
+        if ENABLE_HALF_STEP:
+            virtual_dir_z['seq'] = HALF_STEP_SEQ
+        else:
+            virtual_dir_z['seq'] = FULL_STEP_SEQ
+    if ENABLE_L293D and STEPPER_DIR_PIN_E:
+        if ENABLE_HALF_STEP:
+            virtual_dir_e['seq'] = HALF_STEP_SEQ
+        else:
+            virtual_dir_e['seq'] = FULL_STEP_SEQ
+    else:
+        gpio.init(pin, mode)
+
+def __set_dir(pin):
+    ''' set direction pin '''
+    if ENABLE_L293D and STEPPER_DIR_PIN_X and virtual_dir_x['state'] == STATE_DIR_INV:
+        virtual_dir_x['seq'].reverse()
+        virtual_dir_x['state'] = STATE_DIR_DIRECT
+    elif ENABLE_L293D and STEPPER_DIR_PIN_Y and virtual_dir_y['state'] == STATE_DIR_INV:
+        virtual_dir_y['seq'].reverse()
+        virtual_dir_y['state'] = STATE_DIR_DIRECT
+    elif ENABLE_L293D and STEPPER_DIR_PIN_Z and virtual_dir_z['state'] == STATE_DIR_INV:
+        virtual_dir_z['seq'].reverse()
+        virtual_dir_z['state'] = STATE_DIR_DIRECT
+    elif ENABLE_L293D and STEPPER_DIR_PIN_E and virtual_dir_e['state'] == STATE_DIR_INV:
+        virtual_dir_e['seq'].reverse()
+        virtual_dir_e['state'] = STATE_DIR_DIRECT
+    else:
+        gpio.set(pin)
+
+def __clear_dir(pin):
+    ''' clear direction pin '''
+    if ENABLE_L293D and STEPPER_DIR_PIN_X and virtual_dir_x['state'] == STATE_DIR_DIRECT:
+        virtual_dir_x['seq'].reverse()
+        virtual_dir_x['state'] = STATE_DIR_INV
+    elif ENABLE_L293D and STEPPER_DIR_PIN_Y and virtual_dir_y['state'] == STATE_DIR_DIRECT:
+        virtual_dir_y['seq'].reverse()
+        virtual_dir_y['state'] = STATE_DIR_INV
+    elif ENABLE_L293D and STEPPER_DIR_PIN_Z and virtual_dir_z['state'] == STATE_DIR_DIRECT:
+        virtual_dir_z['seq'].reverse()
+        virtual_dir_z['state'] = STATE_DIR_INV
+    elif ENABLE_L293D and STEPPER_DIR_PIN_E and virtual_dir_e['state'] == STATE_DIR_DIRECT:
+        virtual_dir_e['seq'].reverse()
+        virtual_dir_e['state'] = STATE_DIR_INV
+    else:
+        gpio.clear(pin)
 
 def init():
     """ Initialize GPIO pins and machine itself.
@@ -33,10 +113,10 @@ def init():
         gpio.init(STEPPER_STEP_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(STEPPER_STEP_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(STEPPER_DIR_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(STEPPER_DIR_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(STEPPER_DIR_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
-    gpio.init(STEPPER_DIR_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
+    __init_dir(STEPPER_DIR_PIN_X, rpgpio.GPIO.MODE_OUTPUT)
+    __init_dir(STEPPER_DIR_PIN_Y, rpgpio.GPIO.MODE_OUTPUT)
+    __init_dir(STEPPER_DIR_PIN_Z, rpgpio.GPIO.MODE_OUTPUT)
+    __init_dir(STEPPER_DIR_PIN_E, rpgpio.GPIO.MODE_OUTPUT)
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_Y, rpgpio.GPIO.MODE_INPUT_PULLUP)
     gpio.init(ENDSTOP_PIN_Z, rpgpio.GPIO.MODE_INPUT_PULLUP)
@@ -68,6 +148,8 @@ def spindle_control(percent):
             pwm.add_pin(SPINDLE_PWM_PIN, percent)
         else:
             pwm.remove_pin(SPINDLE_PWM_PIN)
+    else:
+        logging.info("command disabled ...")
 
 
 def fan_control(on_off):
@@ -82,6 +164,8 @@ def fan_control(on_off):
         else:
             logging.info("Fan is off")
             gpio.clear(FAN_PIN)
+    else:
+        logging.info("command disabled ...")
 
 
 def extruder_heater_control(percent):
@@ -93,6 +177,8 @@ def extruder_heater_control(percent):
             pwm.add_pin(EXTRUDER_HEATER_PIN, percent)
         else:
             pwm.remove_pin(EXTRUDER_HEATER_PIN)
+    else:
+        logging.info("command disabled ...")
 
 
 def bed_heater_control(percent):
@@ -104,6 +190,8 @@ def bed_heater_control(percent):
             pwm.add_pin(BED_HEATER_PIN, percent)
         else:
             pwm.remove_pin(BED_HEATER_PIN)
+    else:
+        logging.info("command disabled ...")
 
 
 def get_extruder_temperature():
@@ -152,17 +240,17 @@ def __calibrate_private(x, y, z, invert):
         endstop_inverted_y = ENDSTOP_INVERTED_Y
         endstop_inverted_z = ENDSTOP_INVERTED_Z
     if stepper_inverted_x:
-        gpio.clear(STEPPER_DIR_PIN_X)
+        __clear_dir(STEPPER_DIR_PIN_X)
     else:
-        gpio.set(STEPPER_DIR_PIN_X)
+        __set_dir(STEPPER_DIR_PIN_X)
     if stepper_inverted_y:
-        gpio.clear(STEPPER_DIR_PIN_Y)
+        __clear_dir(STEPPER_DIR_PIN_Y)
     else:
-        gpio.set(STEPPER_DIR_PIN_Y)
+        __set_dir(STEPPER_DIR_PIN_Y)
     if stepper_inverted_z:
-        gpio.clear(STEPPER_DIR_PIN_Z)
+        __clear_dir(STEPPER_DIR_PIN_Z)
     else:
-        gpio.set(STEPPER_DIR_PIN_Z)
+        __set_dir(STEPPER_DIR_PIN_Z)
     pins = 0
     max_size = 0
     if x:
