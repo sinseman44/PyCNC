@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-#from .rpgpio_private import *
-from rpgpio_private import *
+from .rpgpio_private import *
+#from rpgpio_private import *
 
 import time
 import logging
@@ -463,7 +463,9 @@ def test():
 
 # for testing purpose
 def main():
-    pins = [4,17,27,22]
+    #pins_x = [4,17,27,22]
+    pins_x = [22,27,17,4]
+    pins_y = [12,16,20,21]
     seqs = [[1,0,0,0], # Phase A
             [1,0,1,0], # Phase AB
             [0,0,1,0], # Phase B
@@ -472,39 +474,50 @@ def main():
             [0,1,0,1], # Phase A'B'
             [0,0,0,1], # Phase B'
             [1,0,0,1]] # Phase AB'
+    seqs.reverse()
     g = GPIO()
-    for pin in pins:
+    for pin in pins_x:
         print("Start output PIN: {}".format(pin))
         g.init(pin, GPIO.MODE_OUTPUT)
 
+    #for pin in pins_y:
+    #    print("Start output PIN: {}".format(pin))
+    #    g.init(pin, GPIO.MODE_OUTPUT)
     dg = DMAGPIO()
-#    mask = 0
-#    for pin in pins:
-#        mask += 1 << pin
-#    print("MASK : {}".format(bin(mask)))
-#
-#    dg.add_pulse(mask, 500000)
-#    dg.add_delay(500000)
-    for seq in seqs:
-        mask = 0
-        for idx, enable in enumerate(seq):
-            if enable:
-                mask += 1 << pins[idx]
-        dg.add_pulse(mask, 10000)
-    dg.add_delay(250000)
 
-    dg.run(True)
-    print("dmagpio is started")
+#    counter_max = 100
+#    counter_current = 0
+#    while counter_current < counter_max:
+#        for i in range(0, 63):
+#            for seq in seqs:
+#                mask = 0
+#                for idx, enable in enumerate(seq):
+#                    if enable:
+#                        mask += 1 << pins_x[idx]
+#                        #mask += 1 << pins_y[idx]
+#                dg.add_pulse(mask, 1000)
+#        dg.finalize_stream()
+#
+#        dg.run_stream()
+#        while dg.is_active():
+#            time.sleep(0.01)
+#        dg.clear()
+#        seqs.reverse()
+#        counter_current += 1
     try:
         print("press enter to stop...")
         sys.stdin.readline()
     except KeyboardInterrupt:
         pass
+    dg.clear()
     dg.stop()
 
-    for pin in pins:
+    for pin in pins_x:
         print("Stop output PIN: {}".format(pin))
         g.clear(pin)
+#    for pin in pins_y:
+#        print("Stop output PIN: {}".format(pin))
+#        g.clear(pin)
 
 if __name__ == "__main__":
     main()

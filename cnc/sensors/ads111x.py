@@ -13,6 +13,8 @@ class __I2CDev(object):
     def __init__(self):
         self._os_close = os.close
         # Initialize i2c interface and register it for closing on exit.
+        if not os.path.isfile("/dev/i2c-1"):
+            raise ImportError("i2c not configured")
         self._dev = os.open("/dev/i2c-1", os.O_SYNC | os.O_RDWR)
         if self._dev < 0:
             raise ImportError("i2c device not found")
