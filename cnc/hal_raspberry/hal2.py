@@ -169,6 +169,9 @@ def init():
         stepper_y.set_dir(stepper.STATE_DIR_INV)
     stepper_y.enable()
     stepper_y.debug()
+    # Init pen pin
+    gpio.init(PEN_PIN, rpgpio.GPIO.MODE_OUTPUT)
+    gpio.clear(PEN_PIN)
     # Watchdog start
     watchdog.start()
 
@@ -185,6 +188,22 @@ def fan_control(on_off):
     :param on_off: boolean value if fan is enabled.
     """
     logging.debug("fan control not implemented")
+
+def pen_control(up_down):
+    """
+    Pen control.
+    :param on_off: boolean value if pen is up or down.
+    """
+    if up_down:
+        logging.info("Pen is up ...")
+        pwm.add_pin(PEN_PIN, 5)
+        time.sleep(0.25)
+        pwm.add_pin(PEN_PIN, 0)
+    else:
+        logging.info("Pen is down ...")
+        pwm.add_pin(PEN_PIN, 12.5)
+        time.sleep(0.25)
+        pwm.add_pin(PEN_PIN, 0)
 
 def extruder_heater_control(percent):
     """ Extruder heater control.
@@ -346,6 +365,7 @@ def deinit():
     join()
     disable_steppers()
     pwm.remove_all()
+    gpio.clear(PEN_PIN)
     watchdog.stop()
 
 def watchdog_feed():

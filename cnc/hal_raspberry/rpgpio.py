@@ -260,7 +260,8 @@ class DMAGPIO(DMAProto):
 class DMAPWM(DMAProto):
     _DMA_CONTROL_BLOCK_SIZE = 32
     _DMA_DATA_OFFSET = 24
-    _TOTAL_NUMBER_OF_BLOCKS = 256
+    #_TOTAL_NUMBER_OF_BLOCKS = 256
+    _TOTAL_NUMBER_OF_BLOCKS = 76500 
     _DMA_CHANNEL = 14
 
     def __init__(self):

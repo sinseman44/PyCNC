@@ -33,6 +33,7 @@ class GMachine(object):
         self._absoluteCoordinates = 0
         self._plane = None
         self._fan_state = False
+        self._pen_state = False
         self._heaters = dict()
         self.reset()
         hal.init()
@@ -68,6 +69,10 @@ class GMachine(object):
     def _fan(self, state):
         hal.fan_control(state)
         self._fan_state = state
+
+    def _pen(self, state):
+        hal.pen_control(state)
+        self._pen_state = state
 
     def _heat(self, heater, temperature, wait):
         # check if sensor is ok
@@ -112,6 +117,7 @@ class GMachine(object):
             raise GMachineException("out of maximum speed")
 
     def _move_linear(self, delta, velocity):
+        logging.info("[BEFORE] Moving linearly {}".format(delta))
         delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
                             1.0 / STEPPER_PULSES_PER_MM_Y,
                             1.0 / STEPPER_PULSES_PER_MM_Z,
@@ -122,6 +128,7 @@ class GMachine(object):
 
         logging.info("Moving linearly {}".format(delta))
         gen = PulseGeneratorLinear(delta, velocity)
+        logging.debug("gen: {}".format(gen))
         self.__check_velocity(gen.max_velocity())
         hal.move(gen)
         # save position
@@ -372,7 +379,7 @@ class GMachine(object):
             if pause < 0:
                 raise GMachineException("bad delay")
             hal.join()
-            time.sleep(pause)
+            time.sleep(pause / 1000)
         elif c == 'G17':  # XY plane select
             self._plane = PLANE_XY
         elif c == 'G18':  # ZX plane select
@@ -461,6 +468,14 @@ class GMachine(object):
             hal.join()
             p = self.position()
             answer = "X:{} Y:{} Z:{} E:{}".format(p.x, p.y, p.z, p.e)
+        elif c == 'M300': # play sound normaly or control z axis
+            logging.debug("gcode = {}".format(gcode.get('S')))
+            if gcode.get('S') == 30:
+                self._pen(True)
+            elif gcode.get('S') == 50:
+                self._pen(False)
+            else:
+                raise GMachineException("Not supported, use M300 S30 or M300 S50")
         elif c is None:  # command not specified(ie just F was passed)
             pass
         # commands below are added just for compatibility
