@@ -31,8 +31,8 @@ STEPPER_STEPS_PER_REV_Y = 20
 
 # Invert axises direction, by default(False) high level means increase of
 # position. For inverted(True) axis, high level means decrease of position.
-STEPPER_INVERTED_X = True
-STEPPER_INVERTED_Y = False
+STEPPER_INVERTED_X = False 
+STEPPER_INVERTED_Y = True
 STEPPER_INVERTED_Z = False
 STEPPER_INVERTED_E = True
 
@@ -44,8 +44,8 @@ ENDSTOP_INVERTED_Y = True
 ENDSTOP_INVERTED_Z = False  # Auto leveler
 
 # Workplace physical size.
-TABLE_SIZE_X_MM = 40
-TABLE_SIZE_Y_MM = 40
+TABLE_SIZE_X_MM = 41
+TABLE_SIZE_Y_MM = 51
 TABLE_SIZE_Z_MM = 0
 
 # Mixed settings.

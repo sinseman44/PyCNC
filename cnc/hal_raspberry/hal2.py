@@ -46,7 +46,7 @@ class stepper:
         self.state = self.STEPPER_DISABLED 
         self.dir = self.STATE_DIR_DIRECT
         self.axe = axe
-        self.seq = self.FULL_STEP_SEQ
+        self.seq = self.FULL_STEP_SEQ[:]
         self.pins = pins
         self.step_number = 0
         self.current_seq_num = 0 
@@ -68,11 +68,11 @@ class stepper:
         if mode > self.MODE_HALF:
             raise ValueError
         elif mode == self.MODE_FULL:
-            self.seq = self.FULL_STEP_SEQ
+            self.seq = self.FULL_STEP_SEQ[:]
             if self.dir == self.STATE_DIR_INV:
                 self.seq.reverse()
         elif mode == self.MODE_HALF:
-            self.seq = self.HALF_STEP_SEQ
+            self.seq = self.HALF_STEP_SEQ[:]
             if self.dir == self.STATE_DIR_INV:
                 self.seq.reverse()
 
@@ -81,26 +81,41 @@ class stepper:
         if direction > self.STATE_DIR_INV:
             raise ValueError
         elif direction == self.STATE_DIR_INV and self.dir == self.STATE_DIR_DIRECT:
+            #logging.debug("SET DIR INV")
             self.dir = direction
+            #logging.debug("BEFORE: {}".format(self.seq))
             self.seq.reverse()
+            #logging.debug("AFTER: {}".format(self.seq))
+            if self.current_seq_num > 0:
+                self.current_seq_num = len(self.seq) - 1 - self.current_seq_num
         elif direction == self.STATE_DIR_DIRECT and self.dir == self.STATE_DIR_INV:
+            #logging.debug("SET DIR DIRECT")
             self.dir = direction
+            #logging.debug("BEFORE: {}".format(self.seq))
             self.seq.reverse()
+            #logging.debug("AFTER: {}".format(self.seq))
+            if self.current_seq_num > 0:
+                self.current_seq_num = len(self.seq) - 1 - self.current_seq_num
         else:
             logging.warning("direction already set")
 
     def inc_seq_num(self):
         ''' increment current sequence number '''
-        self.current_seq_num += 1
+        if self.current_seq_num >= len(self.seq) - 1:
+            self.current_seq_num = 0
+        else:
+            self.current_seq_num += 1
 
     def dec_seq_num(self):
         ''' decrement current sequence number '''
-        self.current_seq_num -= 1
+        if self.current_seq_num == 0:
+            self.current_seq_num = len(self.seq) - 1
+        else:
+            self.current_seq_num -= 1
 
     def get_current_seq(self):
         ''' get current sequence '''
-        i = self.current_seq_num % (len(self.seq))
-        return self.seq[i]
+        return self.seq[self.current_seq_num]
 
     def disable(self):
         ''' disable stepper '''
@@ -112,9 +127,24 @@ class stepper:
         ''' enable stepper '''
         self.state = self.STEPPER_ENABLED
 
-    def set_speed(self, speed):
-        ''' sets the speed in rev per minute '''
-        logging.debug("speed = {}".format(60*1000*1000 / self.number_of_steps / speed))
+    def debug(self):
+        ''' debug mode '''
+        logging.debug("state = {} - \
+dir = {} - \
+axe = {} - \
+seq = {} - \
+pins = {} - \
+step_number = {} - \
+current_seq_num = {} - \
+number_of_steps = {}".format(self.state, 
+                             self.dir,
+                             self.axe,
+                             self.seq,
+                             self.pins,
+                             self.step_number,
+                             self.current_seq_num,
+                             self.number_of_steps))
+
 
 stepper_x = stepper(axe=stepper.AXE_X, pins=STEPPER_STEP_PINS_X)
 stepper_y = stepper(axe=stepper.AXE_Y, pins=STEPPER_STEP_PINS_Y)
@@ -127,12 +157,18 @@ def init():
     stepper_x.init()
     stepper_x.set_mode(mode = stepper.MODE_HALF)
     stepper_x.set_steps_number(STEPPER_STEPS_PER_REV_X)
+    if STEPPER_INVERTED_X:
+        stepper_x.set_dir(stepper.STATE_DIR_INV)
     stepper_x.enable()
+    stepper_x.debug()
     # Init Y stepper
-#    stepper_y.init()
-#    stepper_y.set_mode(mode = stepper.MODE_HALF)
-#    stepper_x.set_steps_number(STEPPER_STEPS_PER_REV_Y)
-#    stepper_y.enable()
+    stepper_y.init()
+    stepper_y.set_mode(mode = stepper.MODE_HALF)
+    stepper_y.set_steps_number(STEPPER_STEPS_PER_REV_Y)
+    if STEPPER_INVERTED_Y:
+        stepper_y.set_dir(stepper.STATE_DIR_INV)
+    stepper_y.enable()
+    stepper_y.debug()
     # Watchdog start
     watchdog.start()
 
@@ -217,26 +253,30 @@ def move(generator):
     idx = 0
     for direction, tx, ty, tz, te in generator:
         if current_cb is not None:
-            logging.debug("{} + {} => result = {}".format(dma.current_address(), bytes_per_iter, dma.current_address() + bytes_per_iter))
+            #logging.debug("{} + {} => result = {}".format(dma.current_address(), bytes_per_iter, dma.current_address() + bytes_per_iter))
             while dma.current_address() + bytes_per_iter >= current_cb:
                 time.sleep(0.001)
                 current_cb = dma.current_control_block()
-                logging.debug("current control block : {}".format(current_cb))
+                #logging.debug("current control block : {}".format(current_cb))
                 if current_cb is None:
                     k0 = k
                     st = time.time()
                     break  # previous dma sequence has stopped
 #        logging.debug("[{}] direction: {} - tx: {} - ty: {} - tz: {} - te: {}".format(idx, direction, tx, ty, tz, te))
         if direction:  # set up directions
+            logging.debug("[{}] direction: {} - tx: {} - ty: {} - tz: {} - te: {}".format(idx, direction, tx, ty, tz, te))
             if tx > 0:
+                logging.debug("TX Direct")
                 stepper_x.set_dir(stepper.STATE_DIR_DIRECT)
             elif tx < 0:
+                logging.debug("TX Inverse")
                 stepper_x.set_dir(stepper.STATE_DIR_INV)
             if ty > 0:
+                logging.debug("TY Direct")
                 stepper_y.set_dir(stepper.STATE_DIR_DIRECT)
             elif ty < 0:
+                logging.debug("TY Inverse")
                 stepper_y.set_dir(stepper.STATE_DIR_INV)
-            dma.add_delay(STEPPER_PULSE_LENGTH_US)
             continue
         
         mask_x = 0
@@ -248,26 +288,25 @@ def move(generator):
             cur_seq_x = stepper_x.get_current_seq()
             #logging.debug("[TX] prev = {} - K = {} - diff : {} - cur_seq_x : {}".format(prevx, kx, kx - prevx, cur_seq_x)) 
             # mask pins
-            for i, enable in enumerate(cur_seq_x):
-                if enable:
+            for i, enable_x in enumerate(cur_seq_x):
+                if enable_x:
                     mask_x += 1 << STEPPER_STEP_PINS_X[i]
             # set pulse with diff between current time and previous time
-#            logging.debug("[TX] MASK: {} - TIME(us): {}".format(bin(mask_x), kx - prevx))
+            #logging.debug("[TX] MASK: {} - TIME(us): {}".format(bin(mask_x), kx - prevx))
             dma.add_pulse(mask_x, kx - prevx)
             stepper_x.inc_seq_num()
             prevx = kx + STEPPER_PULSE_LENGTH_US
         if ty is not None:
-            logging.debug("not implemented ...")
-#            ky = int(round(ty * US_IN_SECONDS))
-#            cur_seq_y = stepper_y.get_current_seq()
-#            #logging.debug("[TY] prev = {} - K = {} - diff : {} - cur_seq_y : {}".format(prevy, ky, ky - prevy, cur_seq_y)) 
-#            for j, enable in enumerate(cur_seq_y):
-#                if enable:
-#                    mask_y += 1 << STEPPER_STEP_PINS_Y[j]
-#            logging.debug("[TY] MASK: {} - TIME(us): {}".format(bin(mask_y), ky - prevy))
-#            dma.add_pulse(mask_y, ky - prevy)
-#            stepper_y.inc_seq_num()
-#            prevy = ky + STEPPER_PULSE_LENGTH_US
+            ky = int(round(ty * US_IN_SECONDS))
+            cur_seq_y = stepper_y.get_current_seq()
+            #logging.debug("[TY] prev = {} - K = {} - diff : {} - cur_seq_y : {}".format(prevy, ky, ky - prevy, cur_seq_y)) 
+            for j, enable_y in enumerate(cur_seq_y):
+                if enable_y:
+                    mask_y += 1 << STEPPER_STEP_PINS_Y[j]
+            #logging.debug("[TY] MASK: {} - TIME(us): {}".format(bin(mask_y), ky - prevy))
+            dma.add_pulse(mask_y, ky - prevy)
+            stepper_y.inc_seq_num()
+            prevy = ky + STEPPER_PULSE_LENGTH_US
         # run stream ...
 #        if not is_ran and instant and current_cb is None:
 #            # TODO: wait 100 ms
@@ -282,7 +321,6 @@ def move(generator):
         # after long command, we can fill short buffer, that why we may need to
         #  wait until long command finishes
         while dma.is_active():
-            logging.debug("wait ...")
             time.sleep(0.01)
         dma.run(False)
     else:
