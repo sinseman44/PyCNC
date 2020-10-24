@@ -131,13 +131,18 @@ class stepper:
         ''' enable stepper '''
         self.state = self.STEPPER_ENABLED
 
-    def get_cur_mask_and_inc_step(self): 
-        ''' retreive current mask pins and increment sequence '''
+    def get_cur_mask(self): 
+        ''' retreive current mask pins '''
         mask = 0
         # mask pins
         for i, enable in enumerate(self.seq[self.current_seq_num]):
             if enable:
                 mask += 1 << self.pins[i]
+        return mask
+
+    def get_cur_mask_and_inc_step(self): 
+        ''' retreive current mask pins and increment sequence '''
+        mask = self.get_cur_mask()
         self.inc_seq_num()
         return mask
 
@@ -339,6 +344,8 @@ def move(generator):
     k = 0
     k0 = 0
     idx = 0
+    flagx = False
+    flagy = False
     for direction, tx, ty, tz, te in generator:
         if current_cb is not None:
             #logging.debug("{} + {} => result = {}".format(dma.current_address(), bytes_per_iter, dma.current_address() + bytes_per_iter))
@@ -378,7 +385,7 @@ def move(generator):
             ky = int(round(ty * US_IN_SECONDS))
             # search min between kx and ky
             k = min(kx, ky)
-            logging.debug("[TX/TY] prev : {} - K : {} - diff : {}".format(prev, k, k - prev)) 
+#            logging.debug("[TX/TY] prev : {} - K : {} - diff : {}".format(prev, k, k - prev)) 
             mask = stepper_x.get_cur_mask_and_inc_step()
             mask += stepper_y.get_cur_mask_and_inc_step()
 
@@ -400,24 +407,57 @@ def move(generator):
         elif tx is not None:
             # transform sec in microsec
             kx = int(round(tx * US_IN_SECONDS))
-            # retreive current sequence to mask pins
-            mask_x = stepper_x.get_cur_mask_and_inc_step()
-            logging.debug("[TX {}] K : {}us - delay : {}us - diff : {}us".format(tx, kx, kx - prevx, kx - prev)) 
-            # set pulse with diff between current time and previous time
-            #dma.add_pulse(mask_x, kx - prevx)
-            prevx = kx
-            prev = prevx
+
+            delayx = 0
+            if not prevx and not prevy:
+                # set minimum delay for the first time 
+                logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us".format(kx, STEPPER_PULSE_LENGTH_US)) 
+                dma.add_delay(STEPPER_PULSE_LENGTH_US)
+                delayx = STEPPER_PULSE_LENGTH_US
+            else:
+                # retreive current sequence to mask pins
+                mask = stepper_x.get_cur_mask_and_inc_step()
+                if prevy:
+                    mask += stepper_y.get_cur_mask()
+                if flagy:
+                    logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(kx, kx - prevy, mask)) 
+                    # set pulse with diff between current time and previous time
+                    dma.add_pulse(mask, kx - prevy)
+                elif flagx:
+                    logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(kx, kx - prevx, mask)) 
+                    # set pulse with diff between current time and previous time
+                    dma.add_pulse(mask, kx - prevx)
+
+            prevx = kx - delayx
+            flagx = True
+            flagy = False
 
         elif ty is not None:
             # transform sec in microsec
             ky = int(round(ty * US_IN_SECONDS))
-            # retreive current sequence to mask pins
-            mask_y = stepper_y.get_cur_mask_and_inc_step()
-            logging.debug("[TY {}] K : {}us - delay : {}us - diff : {}us".format(ty, ky, ky - prevy, ky - prev)) 
-            # set pulse with diff between current time and previous time
-            #dma.add_pulse(mask_y, ky - prevy)
-            prevy = ky
-            prev = prevy
+
+            delayy=0
+            if not prevy and not prevx:
+                # set minimum delay for the first time 
+                logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us".format(ky, STEPPER_PULSE_LENGTH_US)) 
+                #dma.add_delay(STEPPER_PULSE_LENGTH_US)
+                delayy=STEPPER_PULSE_LENGTH_US
+            else:
+                # retreive current sequence to mask pins
+                mask = stepper_y.get_cur_mask_and_inc_step()
+                if prevx:
+                    mask += stepper_x.get_cur_mask()
+                if flagx:
+                    logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(ky, ky - prevx, mask)) 
+                    # set pulse with diff between current time and previous time
+                    dma.add_pulse(mask, ky - prevx)
+                elif flagy:
+                    logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(ky, ky - prevy, mask)) 
+                    # set pulse with diff between current time and previous time
+                    dma.add_pulse(mask, ky - prevy)
+            prevy = ky - delayy
+            flagy = True
+            flagx = False
 
         idx += 1
 
@@ -427,7 +467,7 @@ def move(generator):
         #  wait until long command finishes
         while dma.is_active():
             time.sleep(0.01)
-        #dma.run(False)
+        dma.run(False)
     else:
         logging.debug("finalize_stream ...")
         # stream mode can be activated only if previous command was finished.
