@@ -2,13 +2,13 @@
 # Hardware config.
 
 # Maximum velocity for each axis in millimeter per minute.
-MAX_VELOCITY_MM_PER_MIN_X = 4001
-MAX_VELOCITY_MM_PER_MIN_Y = 4001
+MAX_VELOCITY_MM_PER_MIN_X = 3001
+MAX_VELOCITY_MM_PER_MIN_Y = 3001
 MAX_VELOCITY_MM_PER_MIN_Z = 1
 MAX_VELOCITY_MM_PER_MIN_E = 1
-MIN_VELOCITY_MM_PER_MIN = 50
+MIN_VELOCITY_MM_PER_MIN = 10
 # Average velocity for endstop calibration procedure
-CALIBRATION_VELOCITY_MM_PER_MIN = 30
+CALIBRATION_VELOCITY_MM_PER_MIN = 1000
 
 # Stepper motors steps per millimeter for each axis.
 ENABLE_L293D = True
@@ -31,8 +31,8 @@ STEPPER_STEPS_PER_REV_Y = 20
 
 # Invert axises direction, by default(False) high level means increase of
 # position. For inverted(True) axis, high level means decrease of position.
-STEPPER_INVERTED_X = False 
-STEPPER_INVERTED_Y = True
+STEPPER_INVERTED_X = True 
+STEPPER_INVERTED_Y = False
 STEPPER_INVERTED_Z = False
 STEPPER_INVERTED_E = True
 
@@ -44,8 +44,8 @@ ENDSTOP_INVERTED_Y = True
 ENDSTOP_INVERTED_Z = False  # Auto leveler
 
 # Workplace physical size.
-TABLE_SIZE_X_MM = 41
-TABLE_SIZE_Y_MM = 51
+TABLE_SIZE_X_MM = 51
+TABLE_SIZE_Y_MM = 41
 TABLE_SIZE_Z_MM = 0
 
 # Mixed settings.
@@ -74,9 +74,9 @@ STEPPER_STEP_PIN_Y = 0
 STEPPER_STEP_PIN_Z = 0
 STEPPER_STEP_PIN_E = 0
 if ENABLE_L293D:
-    STEPPER_STEP_PINS_X = [22,27,17,4]
-    STEPPER_STEP_PINS_Y = [12,16,20,21] 
-    PEN_PIN = 25
+    STEPPER_STEP_PINS_Y = [24,25,8,7]
+    STEPPER_STEP_PINS_X = [12,16,20,21] 
+    PEN_PIN = 18 
 
 STEPPER_DIR_PIN_X = 0
 STEPPER_DIR_PIN_Y = 0 
@@ -96,8 +96,8 @@ if ENABLE_EXTRUDER_HEATER:
 if ENABLE_BED_HEATER:
     BED_TEMPERATURE_SENSOR_CHANNEL = 1
 
-ENDSTOP_PIN_X = 23
-ENDSTOP_PIN_Y = 10
+ENDSTOP_PIN_X = 10
+ENDSTOP_PIN_Y = 9
 ENDSTOP_PIN_Z = 25
 
 # -----------------------------------------------------------------------------

@@ -75,6 +75,10 @@ class stepper:
             self.seq = self.HALF_STEP_SEQ[:]
             if self.dir == self.STATE_DIR_INV:
                 self.seq.reverse()
+    
+    def get_mode(self):
+        ''' get current operationnal mode '''
+        return self.seq
 
     def set_dir(self, direction):
         ''' set direction '''
@@ -127,6 +131,16 @@ class stepper:
         ''' enable stepper '''
         self.state = self.STEPPER_ENABLED
 
+    def get_cur_mask_and_inc_step(self): 
+        ''' retreive current mask pins and increment sequence '''
+        mask = 0
+        # mask pins
+        for i, enable in enumerate(self.seq[self.current_seq_num]):
+            if enable:
+                mask += 1 << self.pins[i]
+        self.inc_seq_num()
+        return mask
+
     def debug(self):
         ''' debug mode '''
         logging.debug("state = {} - \
@@ -169,12 +183,14 @@ def init():
         stepper_y.set_dir(stepper.STATE_DIR_INV)
     stepper_y.enable()
     stepper_y.debug()
+    # Init EndStop
+    gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_NOPULL)
+    gpio.init(ENDSTOP_PIN_Y, rpgpio.GPIO.MODE_INPUT_NOPULL)
     # Init pen pin
     gpio.init(PEN_PIN, rpgpio.GPIO.MODE_OUTPUT)
     gpio.clear(PEN_PIN)
     # Watchdog start
     watchdog.start()
-
 
 def spindle_control(percent):
     """ Spindle control implementation.
@@ -243,7 +259,59 @@ def calibrate(x, y, z):
     :param z: boolean, True to calibrate Z axis.
     :return: boolean, True if all specified end stops were triggered.
     """
-    logging.debug("calibrate not implemented")
+    max_size = 0
+    mask = 0
+    if x:
+        max_size = max(max_size, TABLE_SIZE_X_MM * STEPPER_PULSES_PER_MM_X)
+        stepper_x.set_dir(stepper.STATE_DIR_DIRECT)
+    if y:
+        max_size = max(max_size, TABLE_SIZE_Y_MM * STEPPER_PULSES_PER_MM_Y)
+        stepper_y.set_dir(stepper.STATE_DIR_INV)
+
+    pulses_per_mm_avg = (STEPPER_PULSES_PER_MM_X + STEPPER_PULSES_PER_MM_Y) / 2.0
+    pulses_per_sec = CALIBRATION_VELOCITY_MM_PER_MIN / 60.0 * pulses_per_mm_avg
+    delay = int(US_IN_SECONDS / pulses_per_sec)
+
+    logging.info("[CALIBRATE] num = {} pulses/mm".format(pulses_per_mm_avg))
+    logging.info("[CALIBRATE] num = {} pulses/sec".format(pulses_per_sec))
+    logging.info("[CALIBRATE] delay = {} us".format(delay))
+
+    dma.clear()
+    if not gpio.read(ENDSTOP_PIN_X):
+        # retreive current sequence to X mask pins
+        for _ in stepper_x.get_mode():
+            mask = 0
+            seq = stepper_x.get_current_seq()
+            mask = stepper_x.get_cur_mask_and_inc_step()
+            logging.debug("[X AXIS] MASK = {:#032b} - SEQ = {}".format(mask, seq))
+            dma.add_pulse(mask, delay)
+        dma.finalize_stream()
+        dma.run(True)
+        while dma.is_active():
+            time.sleep(0.1)
+            x_endstop = gpio.read(ENDSTOP_PIN_X) 
+            if x_endstop:
+                dma.stop()
+                dma.clear()
+
+    if not gpio.read(ENDSTOP_PIN_Y):
+        # retreive current sequence to mask Y pins
+        for _ in stepper_y.get_mode():
+            mask = 0
+            seq = stepper_y.get_current_seq()
+            mask = stepper_y.get_cur_mask_and_inc_step()
+            logging.debug("[Y AXIS] MASK = {:#032b} - SEQ = {}".format(mask, seq))
+            dma.add_pulse(mask, delay)
+
+        dma.finalize_stream()
+        dma.run(True)
+        while dma.is_active():
+            time.sleep(0.1)
+            y_endstop = gpio.read(ENDSTOP_PIN_Y) 
+            if y_endstop:
+                dma.stop()
+                dma.clear()
+    return True
 
 def move(generator):
     """ Move head to specified position
@@ -261,6 +329,7 @@ def move(generator):
     bytes_per_iter = 4 * dma.control_block_size()
     # prepare and run dma
     dma.clear() # should just clear current address, but not stop current DMA
+    prev = 0
     prevx = 0
     prevy = 0
     is_ran = False
@@ -300,39 +369,56 @@ def move(generator):
         
         mask_x = 0
         mask_y = 0
-        if tx is not None:
+        mask = 0
+        kx = 0
+        ky = 0
+        if tx is not None and ty is not None:
+            # transform sec in microsec
+            kx = int(round(tx * US_IN_SECONDS))
+            ky = int(round(ty * US_IN_SECONDS))
+            # search min between kx and ky
+            k = min(kx, ky)
+            logging.debug("[TX/TY] prev : {} - K : {} - diff : {}".format(prev, k, k - prev)) 
+            mask = stepper_x.get_cur_mask_and_inc_step()
+            mask += stepper_y.get_cur_mask_and_inc_step()
+
+            # set pulse with diff between current time and previous time
+            dma.add_pulse(mask, k - prev)
+
+            if kx - k > 0: # stay time to complete course for x axis
+                mask_x = stepper_x.get_cur_mask_and_inc_step()
+                # set pulse with diff between current time and previous time
+                dma.add_pulse(mask_x, (kx - k) - prev)
+
+            if ky - k > 0: # stay time to complete course for y axis
+                mask_y = stepper_y.get_cur_mask_and_inc_step()
+                # set pulse with diff between current time and previous time
+                dma.add_pulse(mask_y, (ky - k) - prev)
+
+            prev = k
+
+        elif tx is not None:
             # transform sec in microsec
             kx = int(round(tx * US_IN_SECONDS))
             # retreive current sequence to mask pins
-            cur_seq_x = stepper_x.get_current_seq()
-            #logging.debug("[TX] prev = {} - K = {} - diff : {} - cur_seq_x : {}".format(prevx, kx, kx - prevx, cur_seq_x)) 
-            # mask pins
-            for i, enable_x in enumerate(cur_seq_x):
-                if enable_x:
-                    mask_x += 1 << STEPPER_STEP_PINS_X[i]
+            mask_x = stepper_x.get_cur_mask_and_inc_step()
+            logging.debug("[TX {}] K : {}us - delay : {}us - diff : {}us".format(tx, kx, kx - prevx, kx - prev)) 
             # set pulse with diff between current time and previous time
-            #logging.debug("[TX] MASK: {} - TIME(us): {}".format(bin(mask_x), kx - prevx))
-            dma.add_pulse(mask_x, kx - prevx)
-            stepper_x.inc_seq_num()
-            prevx = kx + STEPPER_PULSE_LENGTH_US
-        if ty is not None:
+            #dma.add_pulse(mask_x, kx - prevx)
+            prevx = kx
+            prev = prevx
+
+        elif ty is not None:
+            # transform sec in microsec
             ky = int(round(ty * US_IN_SECONDS))
-            cur_seq_y = stepper_y.get_current_seq()
-            #logging.debug("[TY] prev = {} - K = {} - diff : {} - cur_seq_y : {}".format(prevy, ky, ky - prevy, cur_seq_y)) 
-            for j, enable_y in enumerate(cur_seq_y):
-                if enable_y:
-                    mask_y += 1 << STEPPER_STEP_PINS_Y[j]
-            #logging.debug("[TY] MASK: {} - TIME(us): {}".format(bin(mask_y), ky - prevy))
-            dma.add_pulse(mask_y, ky - prevy)
-            stepper_y.inc_seq_num()
-            prevy = ky + STEPPER_PULSE_LENGTH_US
-        # run stream ...
-#        if not is_ran and instant and current_cb is None:
-#            # TODO: wait 100 ms
-#            time.sleep(0.1)
-#            dma.run_stream()
-#            is_ran = True
-#            logging.debug("starting ... Addr: {}".format(dma.current_address()))
+            # retreive current sequence to mask pins
+            mask_y = stepper_y.get_cur_mask_and_inc_step()
+            logging.debug("[TY {}] K : {}us - delay : {}us - diff : {}us".format(ty, ky, ky - prevy, ky - prev)) 
+            # set pulse with diff between current time and previous time
+            #dma.add_pulse(mask_y, ky - prevy)
+            prevy = ky
+            prev = prevy
+
         idx += 1
 
     pt = time.time()
@@ -341,7 +427,7 @@ def move(generator):
         #  wait until long command finishes
         while dma.is_active():
             time.sleep(0.01)
-        dma.run(False)
+        #dma.run(False)
     else:
         logging.debug("finalize_stream ...")
         # stream mode can be activated only if previous command was finished.
