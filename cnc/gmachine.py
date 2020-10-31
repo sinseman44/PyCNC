@@ -103,10 +103,11 @@ class GMachine(object):
 
     def __check_delta(self, delta):
         pos = self._position + delta
+        logging.debug("_check_delta : pos init = {} - delta = {} - pos = {}".format(self._position, delta, pos))
         if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
                               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
                                           TABLE_SIZE_Z_MM, 0)):
-            raise GMachineException("out of effective area")
+            raise GMachineException("[CHECK DELTA] out of effective area")
 
     # noinspection PyMethodMayBeStatic
     def __check_velocity(self, max_velocity):
@@ -116,19 +117,17 @@ class GMachine(object):
                 or max_velocity.e > MAX_VELOCITY_MM_PER_MIN_E:
             raise GMachineException("out of maximum speed")
 
-    def _move_linear(self, delta, velocity):
-        logging.info("[BEFORE] Moving linearly {}".format(delta))
-        delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
-                            1.0 / STEPPER_PULSES_PER_MM_Y,
-                            1.0 / STEPPER_PULSES_PER_MM_Z,
-                            1.0 / STEPPER_PULSES_PER_MM_E)
+    def _move_linear(self, delta, velocity, safe_zero=False):
+        if not safe_zero:
+            delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
+                                1.0 / STEPPER_PULSES_PER_MM_Y,
+                                1.0 / STEPPER_PULSES_PER_MM_Z,
+                                1.0 / STEPPER_PULSES_PER_MM_E)
         if delta.is_zero():
             return
         self.__check_delta(delta)
 
-        logging.info("Moving linearly {}".format(delta))
         gen = PulseGeneratorLinear(delta, velocity)
-        logging.debug("gen: {}".format(gen))
         self.__check_velocity(gen.max_velocity())
         hal.move(gen)
         # save position
@@ -188,7 +187,7 @@ class GMachine(object):
             elif (pq == 3 and q == 4) or (pq == 4 and q == 3):
                 is_raise = (pb + rb - r < 0)
             if is_raise:
-                raise GMachineException("out of effective area")
+                raise GMachineException("[ADJUST CIRCLE] out of effective area")
             pq = q
         return ea, eb
 
@@ -257,19 +256,22 @@ class GMachine(object):
         :param y: boolean, move Y axis to zero
         :param z: boolean, move Z axis to zero
         """
+        logging.debug("[SAFE_ZERO] : X : {} - Y : {} - Z : {}".format(x,y,z))
         if x and not y:
             self._move_linear(Coordinates(-self._position.x, 0, 0, 0),
-                              MAX_VELOCITY_MM_PER_MIN_X)
+                              MAX_VELOCITY_MM_PER_MIN_X, True)
         elif y and not x:
             self._move_linear(Coordinates(0, -self._position.y, 0, 0),
-                              MAX_VELOCITY_MM_PER_MIN_X)
+                              MAX_VELOCITY_MM_PER_MIN_X, True)
         elif x and y:
             d = Coordinates(-self._position.x, -self._position.y, 0, 0)
+            logging.debug("[SAFE_ZERO] : d = {}".format(d))
             self._move_linear(d, min(MAX_VELOCITY_MM_PER_MIN_X,
-                                     MAX_VELOCITY_MM_PER_MIN_Y))
+                                     MAX_VELOCITY_MM_PER_MIN_Y),
+                              True)
         if z:
             d = Coordinates(0, 0, -self._position.z, 0)
-            self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z)
+            self._move_linear(d, MAX_VELOCITY_MM_PER_MIN_Z, True)
 
     def position(self):
         """ Return current machine position (after the latest command)
@@ -471,6 +473,8 @@ class GMachine(object):
             hal.join()
             p = self.position()
             answer = "X:{} Y:{} Z:{} E:{}".format(p.x, p.y, p.z, p.e)
+        elif c == 'M117': # display a message
+            hal.set_message("TEST")
         elif c == 'M300': # play sound normaly or control z axis
             logging.debug("gcode = {}".format(gcode.get('S')))
             if gcode.get('S') == 30:

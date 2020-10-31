@@ -1,0 +1,4 @@
+G4 P150 (wait 150ms)
+M300 S50
+G4 P150 (wait 150ms)
+G28

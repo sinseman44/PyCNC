@@ -137,3 +137,5 @@ if 'watchdog_feed' not in locals():
     raise NotImplementedError("hal.watchdog_feed() not implemented")
 if ENABLE_L293D and 'pen_control' not in locals():
     raise NotImplementedError("hal.pen_control() not implemented")
+if ENABLE_L293D and 'set_message' not in locals():
+    raise NotImplementedError("hal.set_message() not implemented")
