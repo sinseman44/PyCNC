@@ -56,7 +56,7 @@ class stepper:
         ''' init gpios '''
         self.state = self.STEPPER_ENABLED 
         for pin in self.pins:
-            logging.debug("set pin {} out".format(pin))
+            #logging.debug("set pin {} out".format(pin))
             gpio.init(pin, rpgpio.GPIO.MODE_OUTPUT)
 
     def set_steps_number(self, number=0):
@@ -171,7 +171,7 @@ stepper_y = stepper(axe=stepper.AXE_Y, pins=STEPPER_STEP_PINS_Y)
 def init():
     """ Initialize GPIO pins and machine itself.
     """
-    logging.info("initialisation of gpios ...")
+    #logging.info("initialisation of gpios ...")
     # Init X stepper
     stepper_x.init()
     stepper_x.set_mode(mode = stepper.MODE_HALF)
@@ -179,7 +179,7 @@ def init():
     if STEPPER_INVERTED_X:
         stepper_x.set_dir(stepper.STATE_DIR_INV)
     stepper_x.enable()
-    stepper_x.debug()
+    #stepper_x.debug()
     # Init Y stepper
     stepper_y.init()
     stepper_y.set_mode(mode = stepper.MODE_HALF)
@@ -187,7 +187,7 @@ def init():
     if STEPPER_INVERTED_Y:
         stepper_y.set_dir(stepper.STATE_DIR_INV)
     stepper_y.enable()
-    stepper_y.debug()
+    #stepper_y.debug()
     # Init EndStop
     gpio.init(ENDSTOP_PIN_X, rpgpio.GPIO.MODE_INPUT_NOPULL)
     gpio.init(ENDSTOP_PIN_Y, rpgpio.GPIO.MODE_INPUT_NOPULL)
@@ -215,14 +215,19 @@ def pen_control(up_down):
     Pen control.
     :param on_off: boolean value if pen is up or down.
     """
+    # waiting previous command is finished ...
+    while dma.is_active():
+        time.sleep(0.01)
+
     if up_down:
-        logging.info("Pen is up ...")
-        pwm.add_pin(PEN_PIN, 5)
+        #logging.info("Pen is up ...")
+        pwm.add_pin(PEN_PIN, 7)
         time.sleep(0.25)
         pwm.add_pin(PEN_PIN, 0)
     else:
-        logging.info("Pen is down ...")
+        #logging.info("Pen is down ...")
         pwm.add_pin(PEN_PIN, 12.5)
+        #pwm.add_pin(PEN_PIN, 9)
         time.sleep(0.25)
         pwm.add_pin(PEN_PIN, 0)
 
@@ -256,6 +261,11 @@ def disable_steppers():
     stepper_x.disable()
     stepper_y.disable()
 
+def set_message(msg):
+    """ Display message to lcd
+    """
+    logging.debug("Message display not implemented")
+
 def calibrate(x, y, z):
     """ Move head to home position till end stop switch will be triggered.
     Do not return till all procedures are completed.
@@ -277,9 +287,9 @@ def calibrate(x, y, z):
     pulses_per_sec = CALIBRATION_VELOCITY_MM_PER_MIN / 60.0 * pulses_per_mm_avg
     delay = int(US_IN_SECONDS / pulses_per_sec)
 
-    logging.info("[CALIBRATE] num = {} pulses/mm".format(pulses_per_mm_avg))
-    logging.info("[CALIBRATE] num = {} pulses/sec".format(pulses_per_sec))
-    logging.info("[CALIBRATE] delay = {} us".format(delay))
+    #logging.info("[CALIBRATE] num = {} pulses/mm".format(pulses_per_mm_avg))
+    #logging.info("[CALIBRATE] num = {} pulses/sec".format(pulses_per_sec))
+    #logging.info("[CALIBRATE] delay = {} us".format(delay))
 
     dma.clear()
     if not gpio.read(ENDSTOP_PIN_X):
@@ -288,7 +298,7 @@ def calibrate(x, y, z):
             mask = 0
             seq = stepper_x.get_current_seq()
             mask = stepper_x.get_cur_mask_and_inc_step()
-            logging.debug("[X AXIS] MASK = {:#032b} - SEQ = {}".format(mask, seq))
+            #logging.debug("[X AXIS] MASK = {:#032b} - SEQ = {}".format(mask, seq))
             dma.add_pulse(mask, delay)
         dma.finalize_stream()
         dma.run(True)
@@ -305,7 +315,7 @@ def calibrate(x, y, z):
             mask = 0
             seq = stepper_y.get_current_seq()
             mask = stepper_y.get_cur_mask_and_inc_step()
-            logging.debug("[Y AXIS] MASK = {:#032b} - SEQ = {}".format(mask, seq))
+            #logging.debug("[Y AXIS] MASK = {:#032b} - SEQ = {}".format(mask, seq))
             dma.add_pulse(mask, delay)
 
         dma.finalize_stream()
@@ -337,8 +347,6 @@ def move(generator):
     prev = 0
     prevx = 0
     prevy = 0
-    is_ran = False
-    instant = INSTANT_RUN
     st = time.time()
     current_cb = 0
     k = 0
@@ -359,18 +367,18 @@ def move(generator):
                     break  # previous dma sequence has stopped
 #        logging.debug("[{}] direction: {} - tx: {} - ty: {} - tz: {} - te: {}".format(idx, direction, tx, ty, tz, te))
         if direction:  # set up directions
-            logging.debug("[{}] direction: {} - tx: {} - ty: {} - tz: {} - te: {}".format(idx, direction, tx, ty, tz, te))
+            #logging.debug("[{}] direction: {} - tx: {} - ty: {} - tz: {} - te: {}".format(idx, direction, tx, ty, tz, te))
             if tx > 0:
-                logging.debug("TX Direct")
+                #logging.debug("TX Direct")
                 stepper_x.set_dir(stepper.STATE_DIR_DIRECT)
             elif tx < 0:
-                logging.debug("TX Inverse")
+                #logging.debug("TX Inverse")
                 stepper_x.set_dir(stepper.STATE_DIR_INV)
             if ty > 0:
-                logging.debug("TY Direct")
+                #logging.debug("TY Direct")
                 stepper_y.set_dir(stepper.STATE_DIR_DIRECT)
             elif ty < 0:
-                logging.debug("TY Inverse")
+                #logging.debug("TY Inverse")
                 stepper_y.set_dir(stepper.STATE_DIR_INV)
             continue
         
@@ -411,7 +419,7 @@ def move(generator):
             delayx = 0
             if not prevx and not prevy:
                 # set minimum delay for the first time 
-                logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us".format(kx, STEPPER_PULSE_LENGTH_US)) 
+                #logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us".format(kx, STEPPER_PULSE_LENGTH_US)) 
                 dma.add_delay(STEPPER_PULSE_LENGTH_US)
                 delayx = STEPPER_PULSE_LENGTH_US
             else:
@@ -420,11 +428,11 @@ def move(generator):
                 if prevy:
                     mask += stepper_y.get_cur_mask()
                 if flagy:
-                    logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(kx, kx - prevy, mask)) 
+                    #logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(kx, kx - prevy, mask)) 
                     # set pulse with diff between current time and previous time
                     dma.add_pulse(mask, kx - prevy)
                 elif flagx:
-                    logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(kx, kx - prevx, mask)) 
+                    #logging.debug("[TX] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(kx, kx - prevx, mask)) 
                     # set pulse with diff between current time and previous time
                     dma.add_pulse(mask, kx - prevx)
 
@@ -439,8 +447,8 @@ def move(generator):
             delayy=0
             if not prevy and not prevx:
                 # set minimum delay for the first time 
-                logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us".format(ky, STEPPER_PULSE_LENGTH_US)) 
-                #dma.add_delay(STEPPER_PULSE_LENGTH_US)
+                #logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us".format(ky, STEPPER_PULSE_LENGTH_US)) 
+                dma.add_delay(STEPPER_PULSE_LENGTH_US)
                 delayy=STEPPER_PULSE_LENGTH_US
             else:
                 # retreive current sequence to mask pins
@@ -448,11 +456,11 @@ def move(generator):
                 if prevx:
                     mask += stepper_x.get_cur_mask()
                 if flagx:
-                    logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(ky, ky - prevx, mask)) 
+                    #logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(ky, ky - prevx, mask)) 
                     # set pulse with diff between current time and previous time
                     dma.add_pulse(mask, ky - prevx)
                 elif flagy:
-                    logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(ky, ky - prevy, mask)) 
+                    #logging.debug("[TY] K : {:#08}us - DELAY : {:#08}us - MASK : {:#032b}".format(ky, ky - prevy, mask)) 
                     # set pulse with diff between current time and previous time
                     dma.add_pulse(mask, ky - prevy)
             prevy = ky - delayy
@@ -462,16 +470,11 @@ def move(generator):
         idx += 1
 
     pt = time.time()
-    if not is_ran:
-        # after long command, we can fill short buffer, that why we may need to
-        #  wait until long command finishes
-        while dma.is_active():
-            time.sleep(0.01)
-        dma.run(False)
-    else:
-        logging.debug("finalize_stream ...")
-        # stream mode can be activated only if previous command was finished.
-        dma.finalize_stream()
+    # after long command, we can fill short buffer, that why we may need to
+    #  wait until long command finishes
+    while dma.is_active():
+        time.sleep(0.01)
+    dma.run(False)
 
     logging.info("prepared in " + str(round(pt - st, 2)) + "s, estimated in "
                  + str(round(generator.total_time_s(), 2)) + "s")
@@ -479,7 +482,7 @@ def move(generator):
 def join():
     """ Wait till motors work.
     """
-    logging.info("hal join()")
+    #logging.info("hal join()")
     # wait till dma works
     while dma.is_active():
         time.sleep(0.01)
@@ -487,7 +490,7 @@ def join():
 def deinit():
     """ De-initialize hardware.
     """
-    logging.info("deinit")
+    #logging.info("deinit")
     join()
     disable_steppers()
     pwm.remove_all()
