@@ -119,10 +119,10 @@ class GMachine(object):
 
     def _move_linear(self, delta, velocity, safe_zero=False):
         if not safe_zero:
-            delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
-                                1.0 / STEPPER_PULSES_PER_MM_Y,
-                                1.0 / STEPPER_PULSES_PER_MM_Z,
-                                1.0 / STEPPER_PULSES_PER_MM_E)
+            delta = delta.round(round(1.0 / STEPPER_PULSES_PER_MM_X, 2),
+                                round(1.0 / STEPPER_PULSES_PER_MM_Y, 2),
+                                round(1.0 / STEPPER_PULSES_PER_MM_Z, 2),
+                                round(1.0 / STEPPER_PULSES_PER_MM_E, 2))
         if delta.is_zero():
             return
         self.__check_delta(delta)
