@@ -58,8 +58,9 @@ _Note: Current Raspberry Pi implementation uses the same resources as on board
 All configs are stored in [config.py](./cnc/config.py) and contain hardware
 properties, limitations and pin names for hardware control.  
 Initially, Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
-stepper motor drivers with DIR and STEP pin inputs. For this branch (l293d), Raspberry Pi
-implementation should be connected to L293D stepper motor drivers 
+stepper motor drivers with DIR and STEP pin inputs. 
+For this branch (l293d), Raspberry Pi implementation should be connected to L293D stepper motor drivers.
+
 Default config is created for Raspberry Pi 2-3 and this wiring config:
 
 | Circuit name    | RPi pin name | RAMPSv1.4 board pin name |  Note           |
