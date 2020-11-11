@@ -103,7 +103,7 @@ class GMachine(object):
 
     def __check_delta(self, delta):
         pos = self._position + delta
-        logging.debug("_check_delta : pos init = {} - delta = {} - pos = {}".format(self._position, delta, pos))
+        logging.debug("_check_delta : pos init : {}, delta : {}, result : {}".format(self._position, delta, pos))
         if not pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
                               Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
                                           TABLE_SIZE_Z_MM, 0)):
@@ -119,10 +119,10 @@ class GMachine(object):
 
     def _move_linear(self, delta, velocity, safe_zero=False):
         if not safe_zero:
-            delta = delta.round(round(1.0 / STEPPER_PULSES_PER_MM_X, 2),
-                                round(1.0 / STEPPER_PULSES_PER_MM_Y, 2),
-                                round(1.0 / STEPPER_PULSES_PER_MM_Z, 2),
-                                round(1.0 / STEPPER_PULSES_PER_MM_E, 2))
+            delta = delta.round(1.0 / STEPPER_PULSES_PER_MM_X,
+                                1.0 / STEPPER_PULSES_PER_MM_Y,
+                                1.0 / STEPPER_PULSES_PER_MM_Z,
+                                1.0 / STEPPER_PULSES_PER_MM_E)
         if delta.is_zero():
             return
         self.__check_delta(delta)

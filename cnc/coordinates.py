@@ -55,10 +55,10 @@ class Coordinates(object):
         :param base_e: Base for e axis.
         :return: New rounded object.
         """
-        return Coordinates(round(self.x / base_x) * base_x,
-                           round(self.y / base_y) * base_y,
-                           round(self.z / base_z) * base_z,
-                           round(self.e / base_e) * base_e)
+        return Coordinates(round(self.x / base_x, 2) * base_x,
+                           round(self.y / base_y, 2) * base_y,
+                           round(self.z / base_z, 2) * base_z,
+                           round(self.e / base_e, 2) * base_e)
 
     def find_max(self):
         """ Find a maximum value of all values.
