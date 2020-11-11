@@ -58,54 +58,43 @@ _Note: Current Raspberry Pi implementation uses the same resources as on board
 All configs are stored in [config.py](./cnc/config.py) and contain hardware
 properties, limitations and pin names for hardware control.  
 Initially, Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
-stepper motor drivers with DIR and STEP pin inputs. 
+stepper motor drivers with DIR and STEP pin inputs.
+
 For this branch (l293d), Raspberry Pi implementation should be connected to L293D stepper motor drivers.
 
-Default config is created for Raspberry Pi 2-3 and this wiring config:
+![l293d_front](https://github.com/sinseman44/PyCNC/blob/l293d/.github/images/l293d_1.png)
+![l293d_back](https://github.com/sinseman44/PyCNC/blob/l293d/.github/images/l293d_2.png)
 
-| Circuit name    | RPi pin name | RAMPSv1.4 board pin name |  Note           |
-|-----------------|--------------|--------------------------|-----------------|
-| X step          | GPIO21       | A0                       |                 |
-| X dir           | GPIO20       | A1                       |                 |
-| steppers enable | GPIO26       | A2, A8, D24, D30, D38    | all steppers    |
-| Y step          | GPIO16       | A6                       |                 |
-| Y dir           | GPIO19       | A7                       |                 |
-| Z dir           | GPIO13       | D48                      |                 |
-| Z step          | GPIO12       | D46                      |                 |
-| E1 step         | GPIO6        | D36                      | reserve         |
-| E1 dir          | GPIO5        | D34                      | reserve         |
-| E0 dir          | GPIO7        | D28                      |                 |
-| E0 step         | GPIO8        | D26                      |                 |
-| Z max           | GPIO11       | D19                      |                 |
-| Z min           | GPIO25       | D18                      |                 |
-| Y max           | GPIO9        | D15                      |                 |
-| Y min           | GPIO10       | D14                      |                 |
-| X max           | GPIO24       | D2                       |                 |
-| X min           | GPIO23       | D3                       |                 |
-| heater bed      | GPIO22       | D8                       |                 |
-| heater 2        | GPIO27       | D9                       | uses for fan    |
-| heater 1        | GPIO18       | D10                      |                 |
-| ser 1           | GPIO17       | D11                      | reserve         |
-| ser 2           | GPIO15       | D6                       | reserve         |
-| ser 3           | GPIO4        | D5                       | reserve         |
-| ser 4           | GPIO14       | D4                       | reserve         |
-| I2C SCL         | GPIO3        | -                        | to ads111x      |
-| I2C SDA         | GPIO2        | -                        | to ads111x      |
-| ads1115 ch0     | -            | A15                      | heater 2 - nc   |
-| ads1115 ch1     | -            | A14                      | bed sensor      |
-| ads1115 ch2     | -            | A13                      | extruder sensor |
-| ads1115 ch3     | -            | -                        | not connected   |
+Default config is created for Raspberry Pi 1.2b and PiPlot2D system and this wiring config:
 
-So having Raspberry Pi connected this way, there is no need to configure
-pin map for project. [RAMPS v1.4](http://reprap.org/wiki/RAMPS_1.4) board can
-be used for this purpose. Full reference circuit diagram and photos of
-assembled controller(click to enlarge):  
-[![circuit small](https://user-images.githubusercontent.com/8740775/28233810-40773186-6902-11e7-8496-5750babfcf44.jpg)](https://user-images.githubusercontent.com/8740775/28233650-d64060e0-6900-11e7-8605-6475384fd2f7.png)
-[![sample front small](https://user-images.githubusercontent.com/8740775/28233812-407820c8-6902-11e7-8de1-35c03509c0e5.jpg)](https://user-images.githubusercontent.com/8740775/28233649-d6402800-6900-11e7-8dca-cd35c8292e0c.jpg)
-[![sample back small](https://user-images.githubusercontent.com/8740775/28233879-db96ea1c-6902-11e7-9298-11150476084b.jpg)](https://user-images.githubusercontent.com/8740775/28233648-d63fa0c4-6900-11e7-8fab-2055e035a6cb.jpg)
-[![sample mounted small](https://user-images.githubusercontent.com/8740775/28233811-40777e8e-6902-11e7-8899-5991860d182c.jpg)](https://user-images.githubusercontent.com/8740775/28233652-d65f82ea-6900-11e7-9e80-d8b0c9238f95.jpg)
+| Circuit name     | RPi pin name |  Note           |
+|------------------|--------------|-----------------|
+| X cmd A          | GPIO12       | to first L293d  |
+| X cmd A'         | GPIO16       | to first L293d  |
+| X cmd B          | GPIO20       | to first L293d  |
+| X cmd B'         | GPIO21       | to first L293d  |
+| X endstop        | GPIO10       |                 |
+| Y cmd A          | GPIO24       | to 2nd L293d    |
+| Y cmd A'         | GPIO25       | to 2nd L293d    |
+| Y cmd B          | GPIO8        | to 2nd L293d    |
+| Y cmd B'         | GPIO7        | to 2nd L293d    |
+| Y endstop        | GPIO9        |                 |
+| servo motor cmd  | GPIO18       | to sg90 servo   |
+| display data 4   | GPIO6        | to HD44780      |
+| display data 5   | GPIO13       | to HD44780      |
+| display data 6   | GPIO19       | to HD44780      |
+| display data 7   | GPIO26       | to HD44780      |
+| display clk edge | GPIO5        | to HD44780      |
+| display Reg Sel  | GPIO11       | to HD44780      |
+| button up        | GPIO17       |                 |
+| button ok        | GPIO22       |                 |
+| button down      | GPIO27       |                 |
 
-## l293d Full/Half Stepper motor driver
+This is the PiPlot2D system based on a Raspberry Pi 1.2b, L293d Stepper motor drivers and 
+DC 5V 2 phases 4 wires stepper motor recovered from old DVD-roms.
+Draw dimensions : 4cm x 5cm 
+
+![PiPlot2D](https://github.com/sinseman44/PyCNC/blob/l293d/.github/images/PiPlot2D.png)
 
 # Usage
 Just clone this repo and run `./pycnc` from repo root. It will start in
