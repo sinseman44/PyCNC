@@ -33,10 +33,10 @@ And the original video when PyCNC was just a prototype [YouTube video](https://y
 M2, M3, M5, M30, M84, M104, M105, M106, M107, M109, M114, M140, M190, M300 (connected to servo motor) are
 supported. Commands can be easily added, see [gmachine.py](./cnc/gmachine.py)
 file.
-* Four axis are supported - X, Y, Z, E.
-* Circular interpolation for XY, ZX, YZ planes is supported.
-* Spindle with rpm control is supported.
-* Extruder and bed heaters are supported.
+* Two axis are supported - X, Y. (Z and E are not supported)
+* Circular interpolation for XY planes is supported.
+* Spindle with rpm control is not supported.
+* Extruder and bed heaters are not supported.
 * Hardware watchdog.
 
 # Watchdog
