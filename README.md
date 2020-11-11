@@ -1,6 +1,3 @@
-[![Build Status](https://travis-ci.org/Nikolay-Kha/PyCNC.svg?branch=master)](https://travis-ci.org/Nikolay-Kha/PyCNC)
-
-
 ![](https://cloud.githubusercontent.com/assets/8740775/26766365/14796b54-4999-11e7-8ca2-9428a45878ab.png)  
 
 PyCNC is a free open-source high-performance G-code interpreter and
@@ -53,15 +50,17 @@ shorted, use hardware protection like thermal cutoff switches in your machines.
 
 # Hardware
 Currently, this project supports Raspberry Pi 1-3. Developed and tested with
-RPI3. And there is a way to add new boards. See [hal.py](./cnc/hal.py) file.  
+RPI1.2b. And there is a way to add new boards. See [hal.py](./cnc/hal.py) file.  
 _Note: Current Raspberry Pi implementation uses the same resources as on board
 3.5 mm jack(PWM module), so do not use it. HDMI audio works._
 
 # Config
 All configs are stored in [config.py](./cnc/config.py) and contain hardware
 properties, limitations and pin names for hardware control.  
-Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
-stepper motor drivers with DIR and STEP pin inputs.
+Initially, Raspberry Pi implementation should be connected to A4988, DRV8825 or any other
+stepper motor drivers with DIR and STEP pin inputs. 
+For this branch (l293d), Raspberry Pi implementation should be connected to L293D stepper motor drivers.
+
 Default config is created for Raspberry Pi 2-3 and this wiring config:
 
 | Circuit name    | RPi pin name | RAMPSv1.4 board pin name |  Note           |
@@ -105,6 +104,8 @@ assembled controller(click to enlarge):
 [![sample front small](https://user-images.githubusercontent.com/8740775/28233812-407820c8-6902-11e7-8de1-35c03509c0e5.jpg)](https://user-images.githubusercontent.com/8740775/28233649-d6402800-6900-11e7-8dca-cd35c8292e0c.jpg)
 [![sample back small](https://user-images.githubusercontent.com/8740775/28233879-db96ea1c-6902-11e7-9298-11150476084b.jpg)](https://user-images.githubusercontent.com/8740775/28233648-d63fa0c4-6900-11e7-8fab-2055e035a6cb.jpg)
 [![sample mounted small](https://user-images.githubusercontent.com/8740775/28233811-40777e8e-6902-11e7-8899-5991860d182c.jpg)](https://user-images.githubusercontent.com/8740775/28233652-d65f82ea-6900-11e7-9e80-d8b0c9238f95.jpg)
+
+## l293d Full/Half Stepper motor driver
 
 # Usage
 Just clone this repo and run `./pycnc` from repo root. It will start in
