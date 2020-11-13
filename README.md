@@ -90,11 +90,21 @@ Default config is created for Raspberry Pi 1.2b and PiPlot2D system and this wir
 | button ok        | GPIO22       |                 |
 | button down      | GPIO27       |                 |
 
+## PiPlot2D
 This is the PiPlot2D system based on a Raspberry Pi 1.2b, L293d Stepper motor drivers and 
 DC 5V 2 phases 4 wires stepper motor recovered from old DVD-roms.
 Draw dimensions : 4cm x 5cm 
 
 ![PiPlot2D](https://github.com/sinseman44/PyCNC/blob/l293d/.github/images/PiPlot2D.png)
+
+### PiPlot2D HAT (Hardaware Attached on Top)
+This HAT gathers all connectors for PiPlot2D system. 
+All three buttons and endstops are filtered with 1000nF capacitor to remove glitch detection.
+An external pull-down resistor is used too for these inputs.
+
+Contrast and luminosity of display are controlled by variable resistors.
+
+![PiPlot2D HAT](https://github.com/sinseman44/PyCNC/blob/l293d/.github/images/PiPlot2D_HAT.png)
 
 # Usage
 Just clone this repo and run `./pycnc` from repo root. It will start in
