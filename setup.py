@@ -20,5 +20,5 @@ setup(
     long_description=long_description,
     license="MIT",
     keywords="CNC 3D printer robot raspberry pi plotter2D",
-    url="https://github.com/sinseman44/PyCNC/tree/l293d",
+    url="https://github.com/sinseman44/PyCNC/",
 )
