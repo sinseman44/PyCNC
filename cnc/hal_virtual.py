@@ -68,6 +68,20 @@ def get_bed_temperature():
     return BED_MAX_TEMPERATURE * 0.999
 
 
+def pen_control(up_down):
+    """ Pen control.
+    :param on_off: boolean value if pen is up or down.
+    """
+    if up_down:
+        logging.info("Pen is up ...")
+    else:
+        logging.info("Pen is down ...")
+
+def set_message(msg):
+    """ Display message to lcd
+    """
+    logging.info("Message display not implemented")
+
 def disable_steppers():
     """ Disable all steppers until any movement occurs.
     """
